@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Button from "./base/Button";
 import Vapi from "@vapi-ai/web";
 
-const vapi = new Vapi("226815bb-8ad3-4c2e-bc81-a973f0fb163c");
+const vapi = new Vapi("VAPI_API_KEY");
 const REACT_APP_BACKEND_URL = process.env.REACT_APP_API_BASE_URL
 
 console.log(process.env.VAPI_API_KEY);
@@ -127,7 +127,7 @@ const VoiceButton = ({ func }) => {
 
   const startCallInline = () => {
     setConnecting(true);
-    vapi.start("524f1032-277d-4348-bbfd-71b8dc445713", addUserName(user));
+    vapi.start("VAPI_ASSISTANT_KEY", addUserName(user));
   };
 
   const endCall = () => {
@@ -144,7 +144,7 @@ const VoiceButton = ({ func }) => {
 };
 
 function addUserName(user) {
-  console.log("************THIS IS THE USER************", user);
+  
   const token = sessionStorage.getItem("access_token");
   return {
     name: "Mary",
