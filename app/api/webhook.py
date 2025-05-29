@@ -7,10 +7,7 @@ import os
 from pathlib import Path
 import asyncio
 import json
-# Removed sqlite3 as we are moving away from it for this handler's core logic
 
-# --- Import the CORRECT Supabase function for getting user ID by email ---
-# from app.api.supabase_db import get_supabase_user_id_by_email
 from app.api.supabase_db import supabase, get_supabase_user_id_by_email
 from app.vapi_message_handlers.conversation_update import ConversationUpdate
 # --- ---
@@ -26,7 +23,7 @@ from app.personalization.user_preferences import (
     get_or_create_voice_session,
     store_voice_interaction,
     update_session_end_time,
-    generate_session_hash # Added for end-of-call-report example
+    generate_session_hash 
 )
 
 
@@ -37,6 +34,10 @@ logger = logging.getLogger(__name__)
 # Initialize the Blueprint.
 webhook = Blueprint('webhook', __name__)
 
+VAPI_SHARED_SECRET = os.environ.get("VAPI_WEBHOOK_SECRET") # Your pre-shared secret
+if not VAPI_SHARED_SECRET:
+    logger.critical("CRITICAL: VAPI_WEBHOOK_SECRET environment variable not set. Webhook security is compromised!")
+    
 # A dictionary to register tool handlers (if this pattern is still used elsewhere)
 tool_handlers = {}
 
@@ -62,9 +63,6 @@ async def tool_call_handler(payload: Dict[str, Any]) -> Dict[str, Any]: # Vapi e
 
     # For Vapi's 'function-call' event type, the tool call is under 'functionCall'
     tool_call_data = payload.get('functionCall') 
-    # If it were an OpenAI-style 'tool_calls' array, you'd iterate,
-    # but Vapi's 'function-call' is singular.
-    # tool_calls_list = payload.get('tool_calls', []) 
 
     if not tool_call_data or not isinstance(tool_call_data, dict):
         logger.error(f"Invalid or missing 'functionCall' data in payload: {str(payload)[:300]}")
@@ -159,9 +157,7 @@ async def tool_call_handler(payload: Dict[str, Any]) -> Dict[str, Any]: # Vapi e
         logger.warning(f"No handler registered for tool {tool_name}")
         tool_result_content = json.dumps({"status": "error", "message": f"No handler for tool {tool_name}."})
 
-    # Vapi expects a specific response format for 'function-call' results
-    # It's typically a top-level object with a 'toolCallResult' key
-    # containing the 'toolCallId' and 'result' (which is the JSON string content).
+.
     return {"toolCallResult": {"toolCallId": tool_call_id_from_vapi, "result": tool_result_content}}
 
 # --- End New Tool Handler ---
@@ -223,28 +219,65 @@ async def handle_update_user_preferences(tool_call_id: str, user_id: str,
 
     return {"tool_call_id": tool_call_id, "content": json.dumps(response_content_dict)}
 
+
+
+def verify_vapi_secret_token(received_token: Optional[str]) -> bool:
+    """
+    Verifies the incoming Vapi webhook secret token by direct comparison.
+    """
+    if not VAPI_SHARED_SECRET:
+        logger.warning("VAPI_WEBHOOK_SECRET not set on server, skipping token verification. THIS IS INSECURE.")
+   
+        return True   
+
+    if not received_token:
+        logger.warning("No X-Vapi-Signature header (secret token) received.")
+        return False
+
+    # Direct comparison of the received token with your configured secret
+    # Use a secure comparison if a more advanced scheme were involved, but for direct string match:
+    is_valid = (received_token == VAPI_SHARED_SECRET)
+    if not is_valid:
+        logger.warning(f"Invalid Vapi secret token received. Expected: '...{VAPI_SHARED_SECRET[-5:]}', Got: '...{received_token[-5:] if received_token else 'N/A'}'") # Log last 5 chars for debug
+    return is_valid
+    
 # ------------------------------
 # Webhook Route and Core Logic
 # ------------------------------
 @webhook.route('/', methods=['POST'])
-async def webhook_route():
+async def webhook_route(): # Keep async if your handlers are async
     """
-    Main webhook route handler.
-    Processes incoming JSON payloads from VAPI.
+    Main webhook route handler. Verifies Vapi secret token first.
     """
-    payload = request.get_json()
-    if not payload:
-        logger.warning("Webhook received no JSON payload.")
+    # --- Verify Secret Token ---
+    received_token = request.headers.get('X-Vapi-Signature') # As per Vapi documentation
+
+    if not VAPI_SHARED_SECRET: # If secret is not configured on server
+        logger.critical("VAPI_WEBHOOK_SECRET is not configured on the server. Cannot verify webhook token.")
+        # Depending on your security policy, you might abort here in production.
+    
+    if not verify_vapi_secret_token(received_token):
+        logger.error(f"Invalid Vapi secret token. Request rejected. Received token: {received_token}")
+        # abort(403) # Forbidden - more appropriate for auth failure
+        return jsonify({"error": "Invalid or missing authentication token"}), 403 # Or 401
+    
+    logger.info("Vapi secret token verified successfully.")
+    # --- End Secret Token Verification ---
+
+    # Get the JSON payload *after* successful token verification
+    payload_from_request = request.get_json()
+    if not payload_from_request:
+        logger.error("Webhook received no JSON payload despite valid token.")
         return jsonify({"error": "No JSON payload"}), 400
 
-    event_payload = payload.get('message', payload)
+    event_payload = payload_from_request.get('message', payload_from_request)
     if not event_payload or not isinstance(event_payload, dict):
-        logger.error(f"Webhook: 'message' field missing or not a dict: {str(payload)[:200]}")
+        logger.error(f"Webhook: 'message' field missing or not a dict in payload: {str(payload_from_request)[:200]}")
         return jsonify({"error": "Invalid payload structure."}), 400
 
     event_type = event_payload.get('type')
-    logger.info(f"Webhook: Received event type '{event_type or 'N/A'}'")
-    logger.debug(f"Webhook Full Event Payload for type '{event_type}': {str(event_payload)[:500]}") # Log snippet
+    call_id_for_log = event_payload.get('call', {}).get('id', 'N/A')
+    logger.info(f"Webhook: Processing event type '{event_type or 'N/A'}' for call '{call_id_for_log}'") # Log snippet
 
     # Ensure handlers are defined for all expected types
     handlers = {
