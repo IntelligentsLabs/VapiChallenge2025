@@ -1,5 +1,10 @@
 import os
 from vapi import Vapi, OpenAiModel, CreateFunctionToolDto
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+ASSISTANT_KEY_ID = os.getenv("ASSISTANT_KEY")
 
 # Initialize VAPI client
 api_key = os.getenv("00170a87-42d6-4ed4-a31a-2d1e27cc7d62")
@@ -14,7 +19,7 @@ transcription_tool = CreateFunctionToolDto(
 
 # Define the assistant model
 assistant_model = OpenAiModel(
-    assistant_id="9528ee66-fd66-4186-8cd2-ba2124861861",  # Provide an assistant ID if you have an existing one
+    assistant_id= ASSISTANT_KEY_ID,  # Provide an assistant ID if you have an existing one
     messages=[{"role": "system", "content": "You are a helpful assistant."}],
     provider="openai",
     model="gpt-4",
