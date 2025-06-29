@@ -63,7 +63,7 @@ def get_first_speech_update_payload():
           },
           "firstMessage": "hi Clyde",
           "metadata": {
-            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc0NjM2NDUxMywianRpIjoiZjg3ODQ0N2UtMTViZC00ZDQ0LWFiMjMtOGExMzIwODlkZDBiIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjY4MTZhOWMwZTc3YTZkOTNlOGMwZTdlNCIsIm5iZiI6MTc0NjM2NDUxMywiY3NyZiI6IjI3MTU0YTcwLTY0M2MtNDU1MC1hYWEzLWQ3OTkwZTM5NTE3MSIsImV4cCI6MTc0NjM2NTQxM30.Jy7KWgqROGxVtcz0Fjkci-K2tJ9hAFzheDvI860Y-yU",
+            "token": "",
             "data": {
               "user": {
                 "username": "Clyde",
