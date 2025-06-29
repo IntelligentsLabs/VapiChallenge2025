@@ -131,7 +131,6 @@ class ModelOutput(BaseModel):
 #                 "provider": "custom-llm",
 #                 "createdAt": "2024-05-12T02:27:18.293Z",
 #                 "updatedAt": "2024-05-12T02:27:18.293Z",
-#                 "apiKey": "2gIG1X7WB8n2XeV6mdMPV0y90vm_4NCf3npu38H7peCMCmdYe",
 #                 "userId": None
 #             }
 #         ]
